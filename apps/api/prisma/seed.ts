@@ -17,53 +17,49 @@ async function seed() {
     rows("market_prices.csv").map((m) => [m.symbol, m.mark_price]),
   );
   // Persist sensitive operational IDs and trading data only. Direct identity fields and free-text support notes are excluded.
+  // Parse before opening the transaction; send one bulk insert per dependency level.
+  const accounts = rows("accounts.csv");
+  const instruments = rows("instruments.csv");
+  const fills = rows("fills.csv");
   await db.$transaction(
     async (tx) => {
-      for (const t of traders)
-        await tx.trader.upsert({
-          where: { id: t.id },
-          create: { id: t.id, brokerId: t.broker_id },
-          update: {},
-        });
-      for (const a of rows("accounts.csv"))
-        await tx.account.upsert({
-          where: { id: a.id },
-          create: {
-            id: a.id,
-            traderId: a.trader_id,
-            brokerId: brokerFor.get(a.trader_id)!,
-            status: a.status,
-            balance: a.balance || "0",
-          },
-          update: {},
-        });
-      for (const i of rows("instruments.csv"))
-        await tx.instrument.upsert({
-          where: { symbol: i.symbol },
-          create: {
-            symbol: i.symbol,
-            pointValue: i.point_value_usd,
-            initialMargin: i.initial_margin_usd,
-            markPrice: marks.get(i.symbol)!,
-          },
-          update: {},
-        });
-      for (const f of rows("fills.csv"))
-        await tx.fill.upsert({
-          where: { id: f.id },
-          create: {
-            id: f.id,
-            accountId: f.account_id,
-            instrumentSymbol: f.instrument_symbol,
-            side: f.side,
-            quantity: Number(f.quantity),
-            price: f.price,
-            commission: f.commission_usd,
-            filledAt: new Date(f.filled_at),
-            orderId: f.order_id,
-          },
-          update: {},
-        });
+      await tx.trader.createMany({
+        data: traders.map((t) => ({ id: t.id, brokerId: t.broker_id })),
+        skipDuplicates: true,
+      });
+      await tx.account.createMany({
+        data: accounts.map((a) => ({
+          id: a.id,
+          traderId: a.trader_id,
+          brokerId: brokerFor.get(a.trader_id)!,
+          status: a.status,
+          balance: a.balance || "0",
+        })),
+        skipDuplicates: true,
+      });
+      await tx.instrument.createMany({
+        data: instruments.map((i) => ({
+          symbol: i.symbol,
+          pointValue: i.point_value_usd,
+          initialMargin: i.initial_margin_usd,
+          markPrice: marks.get(i.symbol)!,
+        })),
+        skipDuplicates: true,
+      });
+      await tx.fill.createMany({
+        data: fills.map((f) => ({
+          id: f.id,
+          accountId: f.account_id,
+          instrumentSymbol: f.instrument_symbol,
+          side: f.side,
+          quantity: Number(f.quantity),
+          price: f.price,
+          commission: f.commission_usd,
+          filledAt: new Date(f.filled_at),
+          orderId: f.order_id,
+        })),
+        skipDuplicates: true,
+      });
     },
     { timeout: 60000 },
   );
