@@ -40,3 +40,15 @@ Run the seed once in a private release job with the original CSV directory tempo
 Before sharing: check database readiness, credential login, account switching, high-risk rendering, rejected wrong credentials, disabled `/api/dev/*`, scoped HTTP and socket traffic, and reconnection. To demonstrate new fills in a deployed review environment, a separate authenticated ingestion mechanism is still needed; do not enable the development simulator in production. Local testing retains that simulator.
 
 Railway was selected and login completed. Project creation on October 21, 2026 was blocked by Railway with `Deploys have been paused temporarily`; its official status page confirmed a platform outage. No ArrowFin resources or secrets were uploaded. No paid service or production data migration should be inferred from this document.
+
+## Render fallback
+
+The user selected Render after the Railway outage. The source is the private repository `https://github.com/josephrojas21/arrowfin-snapshot`, branch `codex/arrowfin-snapshot`. No GitHub collaborator access or submission email has been sent.
+
+For native Node services (the Docker images remain portable and tested):
+
+- API build: `npm ci --include=dev && npm run db:generate && npm run build -w @arrowfin/api`; start: `sh deploy/render-api-start.sh`; health: `/api/ready`.
+- Web build: `npm ci --include=dev && npm run build -w @arrowfin/web`; start: `node node_modules/next/dist/bin/next start apps/web --hostname 0.0.0.0`.
+- Pin Node 22.19.0, set NODE_ENV=production and set NEXT_PUBLIC_API_URL at frontend build time.
+- Supply API secrets through Render's `api.env` secret file. The startup script runs non-destructive versioned migrations before listening; it never runs a seed or resets records.
+- Free services can sleep after inactivity, and Free Postgres expires after 30 days. These are assessment-preview limits, not production reliability guarantees. See https://render.com/docs/free.
