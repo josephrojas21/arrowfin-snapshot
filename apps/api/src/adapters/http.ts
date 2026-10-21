@@ -9,18 +9,22 @@ import {
   Post,
   Req,
   UnauthorizedException,
+  ServiceUnavailableException,
 } from "@nestjs/common";
 import { PrismaClient } from "@prisma/client";
 import { SnapshotService } from "../application/service";
 import { TokenAuth, devEnabled } from "./auth";
 import { AccessDenied, InvalidFill } from "./repository";
 import { parseNewFill } from "./validation";
+import { ReviewerCredentials } from "./credentials";
 @Controller("api")
 export class ApiController {
   constructor(
     @Inject(SnapshotService) private readonly service: SnapshotService,
     @Inject(TokenAuth) private readonly auth: TokenAuth,
     @Inject(PrismaClient) private readonly db: PrismaClient,
+    @Inject(ReviewerCredentials)
+    private readonly credentials: ReviewerCredentials,
   ) {}
   private identity(req: { headers: { authorization?: string } }) {
     const value = req.headers.authorization;
@@ -36,6 +40,38 @@ export class ApiController {
   }
   @Get("health") health() {
     return { status: "ok" };
+  }
+  @Get("ready") async ready() {
+    try {
+      await this.db.$queryRaw`SELECT 1`;
+      return { status: "ready" };
+    } catch {
+      throw new ServiceUnavailableException("Database unavailable");
+    }
+  }
+  @Get("auth/config") authConfig() {
+    return { mode: devEnabled() ? "demo" : "credentials" };
+  }
+  @Post("auth/login") async credentialsLogin(
+    @Body() body: unknown,
+    @Req() request: { socket: { remoteAddress?: string } },
+  ) {
+    const traderId = await this.credentials.verify(
+      body,
+      request.socket.remoteAddress ?? "unknown",
+    );
+    const trader = await this.db.trader.findUnique({
+      where: { id: traderId },
+      select: { id: true, brokerId: true },
+    });
+    if (!trader) throw new UnauthorizedException();
+    return {
+      accessToken: this.auth.issue({
+        traderId: trader.id,
+        brokerId: trader.brokerId,
+      }),
+      trader,
+    };
   }
   @Get("me/snapshot") snapshot(
     @Req() req: { headers: { authorization?: string } },

@@ -7,6 +7,7 @@ import { SnapshotService } from "../application/service";
 import { PrismaSnapshotRepository } from "../adapters/repository";
 import { ApiController } from "../adapters/http";
 import { TokenAuth } from "../adapters/auth";
+import { ReviewerCredentials } from "../adapters/credentials";
 import { SnapshotGateway } from "../adapters/socket";
 @Module({
   controllers: [ApiController],
@@ -15,6 +16,10 @@ import { SnapshotGateway } from "../adapters/socket";
     {
       provide: TokenAuth,
       useFactory: () => new TokenAuth(process.env.JWT_SECRET ?? ""),
+    },
+    {
+      provide: ReviewerCredentials,
+      useFactory: () => new ReviewerCredentials(),
     },
     SnapshotGateway,
     {
