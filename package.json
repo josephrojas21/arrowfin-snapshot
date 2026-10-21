@@ -1,0 +1,23 @@
+{
+  "name": "arrowfin-snapshot",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "engines": {"node": ">=22.12.0"},
+  "scripts": {
+    "dev": "concurrently -k -n api,web \"npm run dev -w @arrowfin/api\" \"npm run dev -w @arrowfin/web\"",
+    "build": "npm run build -w @arrowfin/api && npm run build -w @arrowfin/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "verify": "npm run db:generate && npm run typecheck && npm test && npm run build",
+    "test:e2e": "playwright test",
+    "db:generate": "prisma generate --schema apps/api/prisma/schema.prisma",
+    "db:migrate": "node --env-file=.env node_modules/prisma/build/index.js migrate deploy --schema apps/api/prisma/schema.prisma",
+    "db:seed": "node --env-file=.env --import tsx apps/api/prisma/seed.ts",
+    "setup:env": "node scripts/setup-env.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0", "@types/node": "^22.0.0", "concurrently": "^9.0.0",
+    "prisma": "^6.19.0", "tsx": "^4.20.0", "typescript": "^5.9.0", "vitest": "^3.2.0"
+  }
+}
