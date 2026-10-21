@@ -1,0 +1,27 @@
+# Security and PII decisions
+
+## Authentication and tenant isolation
+
+The demo signs short-lived HS256 JWTs with a randomly generated secret of at least 32 characters. REST accepts a Bearer token. Verification pins the algorithm, issuer and audience and validates expiration and identity claims (`apps/api/src/adapters/auth.ts`). The broker comes from the verified token, never a client-supplied subscription or query filter. The development identity selector is an impersonation tool, not a real login: it is disabled in production even when ENABLE_DEV_TOOLS is true. Do not expose this local demo publicly as a secure authenticated product.
+
+Socket.IO authenticates in middleware before accepting a connection, then joins the server-derived broker/trader room. No join/subscribe message lets a client choose another room. The socket disconnects at token expiry. CORS restricts the configured browser origin, but is not relied on for authorization; non-browser callers still require a valid token. The frontend holds the token only in memory and clears query data on sign-out or identity change.
+
+`PrismaSnapshotRepository.read` requires an identity and queries accounts with both `brokerId` and `traderId`; fills are loaded through those accounts. `addFill` verifies the target account against the same two boundaries before insertion within a transaction. A composite trader/broker foreign key rejects inconsistent account ownership. Snapshot responses use explicit DTOs, so future model fields cannot silently become public.
+
+The concrete vulnerability prevented is IDOR: an attacker cannot change `account_id` in the simulator to write to another trader's account, even inside their own broker. The scoped `account.findFirst` in `apps/api/src/adapters/repository.ts` rejects that request before mutation. `/me/snapshot` has no caller-selected account or tenant parameter. Negative tests cover both identity boundaries, and end-to-end tests exercise them against PostgreSQL and the HTTP API.
+
+If a developer forgets a broker filter, regression tests and repository review are the current safeguards. There is no PostgreSQL RLS safety net yet: a new unscoped query could still leak data. The application/domain boundary test prevents infrastructure imports there, but it does not prove every adapter query is safe. In production, use a restricted application database role with FORCE ROW LEVEL SECURITY policies and transaction-local tenant context; test pool reuse and attempted bypass using that exact role. Migrations run with a separate privileged role.
+
+## Sensitive data and logging
+
+The input names, email, phone, date of birth, SSN suffix, addresses, account numbers, balances, support notes and audit notes are sensitive. Free-text notes can contain further identifiers, payment information and references to documents. Fabrication of the sample does not remove the need to handle the fields carefully.
+
+The seed retains operational trader/broker/account IDs, account status and balance, instrument specifications and execution data. It does not persist direct personal identity fields, account numbers, API key hashes or support/audit notes. Retained identifiers and financial records are still sensitive and access-controlled. The original dataset is Git-ignored, read locally by the loader, and never served by Next.js. Secret files are ignored and local setup generates credentials without printing them.
+
+Application code does not log JWTs, request bodies, fills, balances or full query results. Prisma query logging is disabled. Framework warnings/errors remain enabled for operations; production needs structured redaction and restricted log sinks because unexpected provider exceptions can include sensitive context. The seed emits only a fixed success/failure message.
+
+REST sends only the current trader's operational snapshot with `Cache-Control: no-store` to avoid shared/private cache persistence. WebSocket sends only an opaque version hint, not account balances or the raw fill. Fetching the snapshot again enforces authorization. Production requires TLS for both transports, encryption at rest, restricted database/backups, defined retention and deletion policies, and audited access to financial records. Sensitive free text should not be added merely because it exists in the source dataset.
+
+## Production work deliberately omitted
+
+Replace demo identity selection with a verified identity provider and authorization-aware token exchange; rotate signing keys and implement revocation/refresh. Add rate limits, request limits, structured redaction, restricted audit logging, security headers, TLS and managed secret storage. Add RLS with real tenant-role tests. Replace in-memory publication with a transactional outbox and replay cursors, and add idempotency keys for fill ingestion. Use a real market-data source, prior settlement marks and an exchange calendar. The local database login currently owns its schema and is not a production least-privilege role. The simulator and public demo identity list must stay disabled in production; a production front end needs an actual login integration before deployment.
