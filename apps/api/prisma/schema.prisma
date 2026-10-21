@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+model Trader {
+  id String @id
+  brokerId String
+  accounts Account[]
+  @@unique([id, brokerId])
+}
+model Account {
+  id String @id
+  traderId String
+  brokerId String
+  status String
+  balance Decimal @db.Decimal(24, 8)
+  trader Trader @relation(fields: [traderId, brokerId], references: [id, brokerId])
+  fills Fill[]
+  @@index([brokerId, traderId])
+}
+model Instrument {
+  symbol String @id
+  pointValue Decimal @db.Decimal(24, 8)
+  initialMargin Decimal @db.Decimal(24, 8)
+  markPrice Decimal @db.Decimal(24, 8)
+  fills Fill[]
+}
+model Fill {
+  id String @id
+  sequence Int @default(autoincrement()) @unique
+  accountId String
+  instrumentSymbol String
+  side String
+  quantity Int
+  price Decimal @db.Decimal(24, 8)
+  commission Decimal @db.Decimal(24, 8)
+  filledAt DateTime
+  orderId String
+  account Account @relation(fields: [accountId], references: [id])
+  instrument Instrument @relation(fields: [instrumentSymbol], references: [symbol])
+  @@index([accountId, filledAt])
+}
