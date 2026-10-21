@@ -10,7 +10,7 @@ Run from the repository root with `npm run dev --workspace @arrowfin/web`. The b
 2. The resulting access token stays in React memory. Refreshing the page requires sign-in again; no token is persisted to browser storage.
 3. `/api/me/snapshot` is fetched with a bearer token. Query keys include broker and trader IDs; changing identity clears the query cache and unmounts/disconnects the previous socket.
 4. Socket.IO authenticates with `auth.token`. `snapshot.updated` invalidates the authoritative REST snapshot; it never directly overwrites account data from an event payload.
-5. Connection loss visibly marks values stale. Reconnection keeps the stale state until the REST refresh completes. Request failures preserve a stale warning, while 401/403 hide the account view and offer return to sign-in.
+5. Connection loss visibly marks values stale. Reconnection keeps the stale state until the REST refresh completes. Request failures preserve a stale warning. HTTP 401/403, a server-initiated socket disconnect (including token expiry), or a terminal handshake rejection hide the account view and offer return to sign-in. Only recoverable transport interruptions promise automatic reconnection.
 
 ## Display conventions
 

@@ -20,7 +20,7 @@ export function Dashboard({
     queryFn: ({ signal }) => getSnapshot(session.accessToken, signal),
   });
   const [connection, setConnection] = useState<
-    "connecting" | "connected" | "disconnected"
+    "connecting" | "connected" | "disconnected" | "reauthenticate"
   >("connecting");
   const [selectedAccount, setSelectedAccount] = useState("");
   useEffect(() => {
@@ -32,8 +32,16 @@ export function Dashboard({
         if (socket.connected) setConnection("connected");
       });
     });
-    socket.on("disconnect", () => setConnection("disconnected"));
-    socket.on("connect_error", () => setConnection("disconnected"));
+    socket.on("disconnect", (reason) => {
+      // Server-initiated disconnects do not reconnect automatically (e.g. token expiry).
+      setConnection(
+        reason === "io server disconnect" ? "reauthenticate" : "disconnected",
+      );
+    });
+    socket.on("connect_error", () => {
+      // A rejected handshake is terminal; transport failures still retry automatically.
+      setConnection(socket.active ? "disconnected" : "reauthenticate");
+    });
     socket.on(
       "snapshot.updated",
       () => void client.invalidateQueries({ queryKey: key }),
@@ -47,8 +55,9 @@ export function Dashboard({
     snapshot.data?.accounts.find((item) => item.id === selectedAccount) ??
     snapshot.data?.accounts[0];
   const unauthorized =
-    snapshot.error instanceof ApiError &&
-    [401, 403].includes(snapshot.error.status);
+    connection === "reauthenticate" ||
+    (snapshot.error instanceof ApiError &&
+      [401, 403].includes(snapshot.error.status));
   const stale = connection !== "connected" || snapshot.isError;
   return (
     <>
@@ -92,23 +101,25 @@ export function Dashboard({
           role="status"
         >
           <span className="status-dot" />
-          {connection === "connecting"
-            ? "Connecting"
-            : stale
-              ? "Data may be stale"
-              : snapshot.isFetching
-                ? "Syncing snapshot"
-                : "Live connection"}
+          {unauthorized
+            ? "Sign-in required"
+            : connection === "connecting"
+              ? "Connecting"
+              : stale
+                ? "Data may be stale"
+                : snapshot.isFetching
+                  ? "Syncing snapshot"
+                  : "Live connection"}
         </div>
         <button
           className="secondary-button refresh"
           onClick={() => void snapshot.refetch()}
-          disabled={snapshot.isFetching}
+          disabled={snapshot.isFetching || unauthorized}
         >
           ↻ <span>Refresh</span>
         </button>
       </div>
-      {stale && snapshot.data ? (
+      {stale && snapshot.data && !unauthorized ? (
         <div className="notice" role="status">
           {snapshot.isError
             ? "The latest snapshot could not be loaded."
@@ -119,19 +130,23 @@ export function Dashboard({
             : "Reconnecting automatically; you can also refresh manually."}
         </div>
       ) : null}
-      {snapshot.isPending ? (
+      {snapshot.isPending && !unauthorized ? (
         <div className="loading-state" role="status">
           <span className="spinner" />
           Loading your account snapshot…
         </div>
-      ) : snapshot.isError && (!snapshot.data || unauthorized) ? (
+      ) : unauthorized || (snapshot.isError && !snapshot.data) ? (
         <div className="empty-state" role="alert">
           <h2>
             {unauthorized
               ? "Session unavailable"
               : "Unable to load your snapshot"}
           </h2>
-          <p>{snapshot.error.message}</p>
+          <p>
+            {unauthorized
+              ? "Your connection requires a new session. Please sign in again."
+              : snapshot.error?.message}
+          </p>
           <button
             className="primary-button"
             onClick={unauthorized ? onSignOut : () => void snapshot.refetch()}
