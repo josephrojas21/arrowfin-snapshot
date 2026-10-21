@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { io } from "socket.io-client";
 import { API_URL, ApiError, getSnapshot, type Session } from "./api";
+import { FillSimulator } from "./fill-simulator";
 import { AccountSnapshot } from "./account-snapshot";
 import { sessionDate, sessionTime } from "./format";
 
@@ -183,6 +184,15 @@ export function Dashboard({
             </span>
           </div>
           <AccountSnapshot account={account} />
+          {session.authMode === "demo" &&
+          account.status.toLowerCase() === "active" ? (
+            <FillSimulator
+              key={account.id}
+              account={account}
+              session={session}
+              onSessionExpired={() => setConnection("reauthenticate")}
+            />
+          ) : null}
           <div className="snapshot-footnote">
             <span>
               As of{" "}

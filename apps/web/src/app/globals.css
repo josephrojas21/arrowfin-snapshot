@@ -1077,3 +1077,87 @@ select {
     animation: none;
   }
 }
+input {
+  display: block;
+  width: 100%;
+  border: 1px solid #3b4b5d;
+  background: #0e1721;
+  color: var(--text);
+  border-radius: 5px;
+  padding: 12px;
+  margin-top: 10px;
+  font: inherit;
+}
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.field-label {
+  display: block;
+  margin-top: 18px;
+}
+.simulator {
+  margin-top: 20px;
+}
+.simulator summary {
+  padding: 18px 20px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.simulator summary span {
+  color: var(--amber);
+  font-size: 8px;
+  letter-spacing: 1px;
+  margin-left: 12px;
+}
+.simulator-body {
+  padding: 0 20px 22px;
+}
+.simulator-body > p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 0 0 20px;
+}
+.simulator fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.simulator-fields {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+.simulator-fields input,
+.simulator-fields select {
+  font-size: 12px;
+  padding: 10px;
+}
+.simulator-fields label {
+  font-size: 10px;
+}
+.simulator-submit {
+  width: auto;
+}
+.simulator-result {
+  font-size: 12px;
+  margin-top: 18px;
+}
+@media (max-width: 950px) {
+  .simulator-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .simulator summary span {
+    display: block;
+    margin: 8px 0 0;
+  }
+  .simulator-submit {
+    width: 100%;
+    justify-content: center;
+  }
+}

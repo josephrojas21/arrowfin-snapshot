@@ -122,3 +122,18 @@ test('API failure is visible and recoverable', async ({ page }) => {
   await page.getByRole('button', { name: 'Try again' }).click();
   await expect(page.getByText('No open positions', { exact: true })).toBeVisible();
 });
+
+test('local simulator submits a real fill from the UI', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Demo trader').selectOption(peer);
+  await page.getByRole('button', { name: 'Enter workspace' }).click();
+  await page.getByText('Simulate a fill', { exact: false }).click();
+  await page.getByLabel('Instrument', { exact: true }).fill('MES');
+  await page.getByLabel('Quantity', { exact: true }).fill('1');
+  await page.getByLabel('Execution price', { exact: true }).fill('5643.25');
+  await page.getByLabel('Commission / contract (USD)', { exact: true }).fill('1.40');
+  await page.getByRole('button', { name: 'Submit simulated execution' }).click();
+  await expect(page.getByText('Simulated execution recorded.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'MES', exact: true })).toBeVisible();
+  expect(await db.fill.count({ where: { accountId: peerAccount } })).toBe(1);
+});
