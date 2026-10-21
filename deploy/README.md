@@ -1,6 +1,6 @@
 # Deploy the assessment
 
-Deploy three services: PostgreSQL, the NestJS API (Docker target `api`), and Next.js (Docker target `web`). Keep one API replica until a shared Socket.IO adapter and durable outbox are introduced. The repository contains no original dataset or credentials. No service has been deployed yet.
+Deploy three services: PostgreSQL, the NestJS API (Docker target `api`), and Next.js (Docker target `web`). Keep one API replica until a shared Socket.IO adapter and durable outbox are introduced. The repository contains no original dataset or credentials. The review environment is deployed on Render; see the live status below.
 
 ## Build and runtime settings
 
@@ -52,3 +52,16 @@ For native Node services (the Docker images remain portable and tested):
 - Pin Node 22.19.0, set NODE_ENV=production and set NEXT_PUBLIC_API_URL at frontend build time.
 - Supply API secrets through Render's `api.env` secret file. The startup script runs non-destructive versioned migrations before listening; it never runs a seed or resets records.
 - Free services can sleep after inactivity, and Free Postgres expires after 30 days. These are assessment-preview limits, not production reliability guarantees. See https://render.com/docs/free.
+
+## Live review environment — October 21, 2026
+
+- Web: https://arrowfin-review-web.onrender.com (`srv-dbckhhdg1s2s73djl650`).
+- API: https://arrowfin-review-api.onrender.com (`srv-dbckhe4s728c73fbilg0`).
+- PostgreSQL: `arrowfin-db` (`dpg-dbckga29lscs73e76vqg-a`), Virginia, free plan.
+- Both Node services use free plans in Virginia. API and database communicate over Render's private network. External database access is disabled after initial migrations and dataset loading.
+- API `api.env` is held in Render secret files. Reviewer passwords remain only in the local ignored `.private/reviewer-credentials.json`; share them privately with intended reviewers.
+- Verified live: readiness, two credential logins, disjoint account scopes, exact-origin CORS, authenticated secure WebSocket connections, rejected anonymous HTTP/WebSocket access and wrong password, developer routes disabled. Browser inspection confirmed the deployed credential form.
+- New-fill broadcasting is verified by local E2E tests, not this production smoke check: there is no production ingestion endpoint. The local simulator remains the way to test newly submitted fills.
+- Initial remote seed exceeded the sequential import's practical time budget. The importer now uses four ordered bulk inserts in one transaction with `skipDuplicates`; local repeat-seed content remained identical and remote loading passed.
+
+Do not expose the database externally for normal application use, enable demo tools in production, or reset the seed on service startup. Free Postgres expires after 30 days; preserve/recreate the assessment environment before expiry if it is still needed.

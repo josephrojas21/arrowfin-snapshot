@@ -98,4 +98,6 @@ Draft for candidate review: Tell the next two engineers that `brokerId` alone is
 
 ## Deployment status
 
-Railway sign-in succeeded on October 21, 2026, but project creation returned `Deploys have been paused temporarily`. The official status page confirmed an active platform incident. No ArrowFin cloud project, secrets or dataset were uploaded. Deployment remains pending provider recovery or an alternative destination. See `deploy/README.md`.
+Live review environment on Render (October 21, 2026): https://arrowfin-review-web.onrender.com. API: https://arrowfin-review-api.onrender.com. Railway creation was blocked by a platform incident, so the user selected Render. Both services and PostgreSQL use free plans. Credentials are distributed privately; development identity selection and fill simulation are disabled in production.
+
+Deployed checks passed: database readiness, credential login for two traders, scoped snapshots with disjoint account IDs, exact-origin CORS, authenticated WSS, rejected anonymous HTTP/WSS and wrong passwords, and disabled developer endpoints. The original dataset was loaded once through the idempotent batch importer; external database access was then disabled. This deployed smoke check validates WSS connectivity, not new-fill broadcasting; the complete fill-to-browser flow was verified locally by E2E tests. Free services can sleep and Free Postgres expires after 30 days. See `deploy/README.md`.
