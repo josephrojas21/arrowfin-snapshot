@@ -44,7 +44,7 @@ npm run dev
 
 Open http://127.0.0.1:3000. Choose a demo trader and enter their workspace. API: http://127.0.0.1:4000. PostgreSQL is bound to loopback on port 55439. `setup:env` generates random local credentials without printing them and preserves an existing `.env`. The database persists in a Docker volume. Booting the app never reseeds or resets data.
 
-Demo identity selection is intentionally not production authentication. Both development tools and a non-production environment are required. Production integration needs a trusted identity provider and a token exchange consistent with the documented issuer/audience.
+Demo identity selection is intentionally not production authentication. Both development tools and a non-production environment are required. Production mode uses restricted reviewer credentials stored as scrypt hashes; see `deploy/README.md`. A real product still needs a trusted identity provider, MFA, recovery and revocation.
 
 ## Scope and architecture
 
@@ -80,13 +80,13 @@ npm run verify
 npm run test:e2e
 ```
 
-Local validation on October 21, 2026: `npm run verify` passed (15 unit/regression tests, both typechecks and production builds); `npm run test:e2e` passed (5 browser/API/database tests); the seed ran successfully twice; npm reported 0 vulnerabilities after dependency updates. CI is configured but has not been run on GitHub.
+Local validation on October 21, 2026: `npm run verify` passed (28 unit/regression tests, both typechecks and production builds); `npm run test:e2e` passed (6 browser/API/database tests); the seed ran successfully twice; npm reported 0 vulnerabilities after dependency updates. CI is configured but has not been run on GitHub.
 
 The E2E suite creates isolated synthetic identities and removes only its own records. It works on a fresh migrated database without copying sensitive input CSVs into CI.
 
 See `SECURITY.md` for trust boundaries and production gaps, and `CODE_REVIEW.md` for the assessment PR review. The submission is a GitHub repository (public or private); deployment is not required by the brief. For a private repository, the brief requests access for julian@arrowfin.io, followed by sending the repository link. Sharing and sending are separate final user actions.
 
-A production deployment requires replacing demo sign-in, provisioning secrets, configuring trusted origins and serving the NestJS WebSocket backend on infrastructure that supports persistent connections. A Next.js deployment alone does not constitute a working full-stack demo.
+Deployment uses credential sign-in, provisioned secrets, exact trusted origins and a NestJS WebSocket backend on infrastructure that supports persistent connections. Docker images for both services have been built and the API tested in production mode. A Next.js deployment alone does not constitute a working full-stack demo.
 
 ## Architecture and handoff reflection
 
@@ -95,3 +95,7 @@ Draft for candidate review: The main decision is keeping tenant context explicit
 Draft for candidate review: With a second day, add PostgreSQL row-level security using a restricted application role and transaction-local tenant context, then add an outbox/replay protocol. These address the two largest remaining failure modes: an accidentally unscoped query and a lost live notification.
 
 Draft for candidate review: Tell the next two engineers that `brokerId` alone is insufficient: every trader-facing operation also needs trader/account ownership. Preserve domain dependency direction, the UTC storage convention, complete-history reconstruction, decimal arithmetic and the public DTO contract. Assign backend persistence/event work separately from frontend rendering, and require cross-tenant regression tests for changes to either auth or repository behavior.
+
+## Deployment status
+
+Railway sign-in succeeded on October 21, 2026, but project creation returned `Deploys have been paused temporarily`. The official status page confirmed an active platform incident. No ArrowFin cloud project, secrets or dataset were uploaded. Deployment remains pending provider recovery or an alternative destination. See `deploy/README.md`.
